@@ -1,6 +1,6 @@
 var mysql = require("mysql");
 var inquirer = require("inquirer");
-var sprintf=require("sprintf-js").sprintf;
+var sprintf = require("sprintf-js").sprintf;
 
 // create the connection information for the sql database
 var connection = mysql.createConnection({
@@ -15,15 +15,16 @@ var connection = mysql.createConnection({
     database: "bamazon"
 });
 
-// connect to the mysql server and sql database
+
 connection.connect(function (err) {
     if (err) throw err;
-    // run the start function after the connection is made to prompt the user
+    // run the displayProducts function
     displayProducts();
 });
 
-// function which prompts the user for what action they should take
+
 function start() {
+    //This function will prompt the customer to choose and item to buy and then give a total for the sale.
     inquirer
 
         .prompt([
@@ -39,13 +40,15 @@ function start() {
             }
         ])
         .then(function (answer) {
-            // based on their answer, either call the bid or the post functions
             var itemID = answer.itemID;
             var quantity = answer.quantity;
             connection.query("SELECT item_id, product_name, stock_quantity, price FROM products WHERE item_id=" + itemID, function (err, res) {
+                if (err) throw err;
+                //Check to make sure customer chose a valid item ID.
                 if (res === undefined || res.length === 0) {
                     console.log("Sorry you have entered an incorrect item ID.\nPlease try again");
                     displayProducts();
+                //Let the customer know if we don't have enough inventory.
                 } else if (quantity > res[0].stock_quantity) {
                     console.log("You have requested to purchase the following quantity: " + quantity + ".  We only have " + res[0].stock_quantity + " in stock.\nPlease try again.");
                     displayProducts();
@@ -60,30 +63,28 @@ function start() {
                             {
                                 item_id: itemID
                             }
-                        ]
-                    )
-                    var total = Number(quantity) * Number(res[0].price);
-                    console.log(sprintf("Your total is: $%.2f", total));
-                    displayProducts();
+                        ],
+                        function (err) {
+                            if (err) throw err;
+                            var total = Number(quantity) * Number(res[0].price);
+                            console.log(sprintf("Your total is: $%.2f", total));
+                            displayProducts();
+                        });
                 }
             });
-
         });
 }
 
 function displayProducts() {
-    console.log("PRODUCTS FOR SALE\n");
+    //This function will display all of the products for sale.
+    console.log("\nPRODUCTS FOR SALE");
     connection.query("SELECT item_id, product_name, price FROM products", function (err, res) {
         if (err) throw err;
-        // Log all results of the SELECT statement
+        console.log(sprintf("\n%-10s %-25s %-11s", "Item ID", "Product", "Price"));
         for (var i = 0; i < res.length; i++) {
-            //console.log("Item ID: %i Product: %s Pricw" + res[i].item_id + " Product: " + res[i].product_name + "        Price: $" + res[i].price);
-            console.log(sprintf("Item ID: %-8i Product: %-25s Price: $%-10.2f", res[i].item_id, res[i].product_name, res[i].price));
-            
+            console.log(sprintf("%-10i %-25s $%-10.2f", res[i].item_id, res[i].product_name, res[i].price));
         }
-    
+        console.log("\n");
         start();
-        //console.log(res[0]);
-        //connection.end();
     });
 }
